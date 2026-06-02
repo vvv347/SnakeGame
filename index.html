@@ -33,10 +33,28 @@ canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  background: rgba(22, 33, 62, 0.95);
+  padding: 28px 36px;
+  border-radius: 12px;
+  border: 2px solid #e94560;
+  min-width: 340px;
 }
-#overlay h1 { font-size: 48px; color: #e94560; }
-#overlay p { font-size: 20px; color: #aaa; }
+#overlay h1 { font-size: 40px; color: #e94560; }
+#overlay p { font-size: 18px; color: #aaa; }
+#nameInput {
+  padding: 10px 16px;
+  font-size: 18px;
+  background: #1a1a2e;
+  color: #eee;
+  border: 2px solid #e94560;
+  border-radius: 8px;
+  outline: none;
+  text-align: center;
+  width: 200px;
+}
+#nameInput::placeholder { color: #555; }
+#nameInput:focus { border-color: #ff6b81; }
 button {
   padding: 12px 32px;
   font-size: 18px;
@@ -48,6 +66,39 @@ button {
   transition: background 0.2s;
 }
 button:hover { background: #c73651; }
+#gameOverSection { display: none; flex-direction: column; align-items: center; gap: 10px; }
+#leaderboard {
+  width: 100%;
+  margin-top: 8px;
+}
+#leaderboard h3 {
+  font-size: 16px;
+  color: #e94560;
+  margin-bottom: 8px;
+  text-align: center;
+}
+#leaderboard table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+#leaderboard th {
+  color: #aaa;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid #333;
+}
+#leaderboard td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #222;
+}
+#leaderboard td:nth-child(2) { text-align: right; }
+.lb-rank { color: #888; width: 28px; }
+.lb-name { color: #eee; }
+.lb-score { color: #e94560; font-weight: bold; }
+.lb-highlight .lb-rank,
+.lb-highlight .lb-name,
+.lb-highlight .lb-score { color: #ff6b81; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -61,6 +112,12 @@ button:hover { background: #c73651; }
     <h1>Snake</h1>
     <p>Use Left/Right arrows or A/D to steer</p>
     <button id="startBtn">Start Game</button>
+    <div id="leaderboard"><h3>Top 10</h3><table id="lbTable"></table></div>
+    <div id="gameOverSection">
+      <p id="finalScore"></p>
+      <input id="nameInput" type="text" placeholder="Your name" maxlength="16" autocomplete="off">
+      <button id="saveBtn">Save Result</button>
+    </div>
   </div>
 </div>
 
@@ -71,6 +128,12 @@ const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('startBtn');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('highScore');
+const nameInput = document.getElementById('nameInput');
+const saveBtn = document.getElementById('saveBtn');
+const gameOverSection = document.getElementById('gameOverSection');
+const finalScoreEl = document.getElementById('finalScore');
+const lbTable = document.getElementById('lbTable');
+const lbHeader = overlay.querySelector('#leaderboard h3');
 
 const SPEED = 120;
 const BOOST_SPEED = 200;
@@ -83,7 +146,35 @@ const INITIAL_LENGTH = 15;
 const SELF_COLLISION_SKIP = 80;
 
 let segments, dirAngle, food, score, highScore, running, animId, lastTime;
-let turnDir, boosting;
+let turnDir, boosting, lastSavedIndex;
+
+function loadLeaderboard() {
+  try { return JSON.parse(localStorage.getItem('snakeLeaderboard') || '[]'); }
+  catch { return []; }
+}
+
+function saveLeaderboard(lb) {
+  localStorage.setItem('snakeLeaderboard', JSON.stringify(lb));
+}
+
+function renderLeaderboard(highlightIdx = -1) {
+  const lb = loadLeaderboard();
+  lbHeader.textContent = lb.length ? 'Top 10' : '';
+  if (!lb.length) { lbTable.innerHTML = ''; return; }
+  let html = '<tr><th>#</th><th>Name</th><th>Score</th></tr>';
+  const top = lb.slice(0, 10);
+  top.forEach((entry, i) => {
+    const cls = i === highlightIdx ? ' class="lb-highlight"' : '';
+    html += `<tr${cls}><td class="lb-rank">${i + 1}</td><td class="lb-name">${escHtml(entry.name)}</td><td class="lb-score">${entry.score}</td></tr>`;
+  });
+  lbTable.innerHTML = html;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
 highScore = parseInt(localStorage.getItem('snakeHigh') || '0');
 highScoreEl.textContent = highScore;
@@ -229,8 +320,37 @@ function gameOver() {
   overlay.querySelector('h1').textContent = 'Game Over';
   overlay.querySelector('p').textContent = `Score: ${score}`;
   startBtn.textContent = 'Play Again';
+  gameOverSection.style.display = 'flex';
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'Save Result';
+  nameInput.value = '';
+  lastSavedIndex = -1;
+  renderLeaderboard(-1);
   overlay.style.display = 'flex';
+  setTimeout(() => nameInput.focus(), 100);
 }
+
+function saveResult() {
+  const name = nameInput.value.trim() || 'Anonymous';
+  const lb = loadLeaderboard();
+  lb.push({ name, score });
+  lb.sort((a, b) => b.score - a.score);
+  if (lb.length > 50) lb.length = 50;
+  saveLeaderboard(lb);
+
+  const idx = lb.findIndex(e => e.name === name && e.score === score);
+  lastSavedIndex = idx;
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saved!';
+  renderLeaderboard(idx);
+}
+
+saveBtn.addEventListener('click', saveResult);
+
+nameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveResult();
+  e.stopPropagation();
+});
 
 function gameLoop(time) {
   if (!running) return;
@@ -253,6 +373,15 @@ function start() {
   animId = requestAnimationFrame(gameLoop);
 }
 
+function showWelcome() {
+  overlay.querySelector('h1').textContent = 'Snake';
+  overlay.querySelector('p').textContent = 'Use Left/Right arrows or A/D to steer';
+  startBtn.textContent = 'Start Game';
+  gameOverSection.style.display = 'none';
+  renderLeaderboard();
+  overlay.style.display = 'flex';
+}
+
 startBtn.addEventListener('click', start);
 
 document.addEventListener('keydown', e => {
@@ -272,6 +401,7 @@ document.addEventListener('keyup', e => {
 
 init();
 draw();
+showWelcome();
 </script>
 </body>
 </html>
