@@ -146,6 +146,7 @@ const INITIAL_LENGTH = 15;
 const SELF_COLLISION_SKIP = 80;
 
 let segments, dirAngle, food, score, highScore, running, animId, lastTime;
+<<<<<<< HEAD
 let turnDir, boosting, lastSavedIndex;
 
 function loadLeaderboard() {
@@ -175,6 +176,9 @@ function escHtml(s) {
   d.textContent = s;
   return d.innerHTML;
 }
+=======
+let turnDir, boosting;
+>>>>>>> e262da0bb391789d713db3287e43c0deb006698c
 
 highScore = parseInt(localStorage.getItem('snakeHigh') || '0');
 highScoreEl.textContent = highScore;
@@ -330,6 +334,7 @@ function gameOver() {
   setTimeout(() => nameInput.focus(), 100);
 }
 
+<<<<<<< HEAD
 function saveResult() {
   const name = nameInput.value.trim() || 'Anonymous';
   const lb = loadLeaderboard();
@@ -352,6 +357,8 @@ nameInput.addEventListener('keydown', e => {
   e.stopPropagation();
 });
 
+=======
+>>>>>>> e262da0bb391789d713db3287e43c0deb006698c
 function gameLoop(time) {
   if (!running) return;
   if (!lastTime) lastTime = time;
@@ -371,6 +378,7 @@ function start() {
   running = true;
   lastTime = null;
   animId = requestAnimationFrame(gameLoop);
+<<<<<<< HEAD
 }
 
 function showWelcome() {
@@ -380,6 +388,8 @@ function showWelcome() {
   gameOverSection.style.display = 'none';
   renderLeaderboard();
   overlay.style.display = 'flex';
+=======
+>>>>>>> e262da0bb391789d713db3287e43c0deb006698c
 }
 
 startBtn.addEventListener('click', start);
